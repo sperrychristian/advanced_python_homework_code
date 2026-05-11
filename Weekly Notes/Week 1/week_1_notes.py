@@ -1,1 +1,0 @@
-# We will use Linux big time in this course! 
