@@ -31,3 +31,5 @@ r1 = Rectangle(5,3)
 
 # printing the area
 print(r1.calcArea())
+
+# NO AI PROMPTS USED IN THIS PROBLEM 
