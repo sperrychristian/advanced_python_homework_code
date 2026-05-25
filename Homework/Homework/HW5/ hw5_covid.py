@@ -84,7 +84,7 @@ with open('/workspaces/advanced_python_homework_code/Homework/Homework/HW5/state
 
             # grab the year and month from the end_date string and add this weeks cases to that months running total
             month_key = period['end_date'][0:7]
-            # # establishing in the monthly totals dictionary if it doesn't exist yet
+            # establishing in the monthly totals dictionary if it doesn't exist yet
             if month_key not in monthly_totals:
                 monthly_totals[month_key] = 0 
             monthly_totals[month_key] += float(period['new_cases'])
@@ -96,11 +96,11 @@ with open('/workspaces/advanced_python_homework_code/Homework/Homework/HW5/state
 
         # calculate the highest month in the monthly totals dictionary, key= points at the value of each key to calculate the max off of
         highest_month_key = max(monthly_totals, key=monthly_totals.get)
-            # setting the highest month total = to a variable to reference in the print statement
+        # setting the highest month total = to a variable to reference in the print statement
         highest_month_total = monthly_totals[highest_month_key]
         highest_month_percentage = round((highest_month_total/int(population)) * 100, 2)
 
-            # isolating year and month in the highest month key to convert to a string for the correct print output
+        # isolating year and month in the highest month key to convert to a string for the correct print output
         year = highest_month_key[0:4]
         month_numeric = highest_month_key[5:7]
         month_print = month_names[month_numeric]
