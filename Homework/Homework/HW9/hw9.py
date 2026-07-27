@@ -16,8 +16,9 @@ import requests
 import networkx as nx
 from itertools import permutations
 
+# AI PROMPT: 'Remind me how to get the current directory of a file in python'
 current_directory = os.path.dirname(__file__) # get the current directory of this file
-coin_ids_file = current_directory + '/' + 'coin_ids.txt' # asigning a variable to the filename
+coin_ids_file = current_directory + '/' + 'coin_ids.txt' # assigning a variable to the filename
 vs_currencies_file = current_directory + '/' + 'vs_currencies.txt'
 
 # reading the coin ids and ticker symbols out of their txt files (one per line)
@@ -30,7 +31,7 @@ coin_id_to_ticker = {}
 for i in range(len(coin_ids)):
     coin_id_to_ticker[coin_ids[i]] = ticker_symbols[i]
 
-# the coin full name and the ticker are both required in the url to get the price quote so I'm joing both lists to the url
+# the coin full name and the ticker are both required in the url to get the price quote so I'm joining both lists to the url
 url = 'https://api.coingecko.com/api/v3/simple/price?ids=' + ','.join(coin_ids) + '&vs_currencies=' + ','.join(ticker_symbols)
 
 
@@ -55,7 +56,7 @@ for coin_id, price_quotes in exchange_rates.items():
 
     for to_ticker, exchange_rate in price_quotes.items():
 
-        # skipping a coin quoted against itself bedcause their wieght will always be 1.0
+        # skipping a coin quoted against itself because their wieght will always be 1.0
         if from_ticker != to_ticker:
             edges.append((from_ticker, to_ticker, exchange_rate)) # add edge to a list of tupples
 
