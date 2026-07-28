@@ -1,0 +1,13 @@
+ethereum
+bitcoin
+litecoin
+ripple
+cardano
+bitcoin-cash
+eos
+dogecoin
+polkadot
+chainlink
+avalanche-2
+uniswap
+aave

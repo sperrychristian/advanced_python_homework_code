@@ -1,0 +1,13 @@
+eth
+btc
+ltc
+xrp
+ada
+bch
+eos
+doge
+dot
+link
+avax
+uni
+aave

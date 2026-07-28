@@ -4,9 +4,9 @@ coingecko api, builds a directed graph where each currency is a node and each ex
 rate is a weighted edge, then traverses every path between every currency pair looking
 for dis-equilibrium (arbitrage opportunities)
 
-If I trade from one coin to another and back, multiplying all the exchange
-rates along the way, the result should be exactly 1.0. If it's not exactly 1.0, the market
-is in dis-equilibrium and there is an arbitrage opportunity. The further from 1.0, the better.
+the big idea - if I trade from one coin to another and back, multiplying all the exchange
+rates along the way, the result should be exactly 1.0. if it's not exactly 1.0, the market
+is in dis-equilibrium and there is an arbitrage opportunity. the further from 1.0, the better.
 '''
 
 import os
@@ -16,10 +16,21 @@ import requests
 import networkx as nx
 from itertools import permutations
 
+# AI PROMPT: 'what's the easiest way in python to write rows of data out to a csv file'
+import csv
+
+# AI PROMPT: 'how do i get the current date and time formatted as a string in python'
+from datetime import datetime
+
+# AI PROMPT: 'what's the built in python library for reading and writing json files'
+import json
+
 # AI PROMPT: 'Remind me how to get the current directory of a file in python'
 current_directory = os.path.dirname(__file__) # get the current directory of this file
 coin_ids_file = current_directory + '/' + 'coin_ids.txt' # assigning a variable to the filename
 vs_currencies_file = current_directory + '/' + 'vs_currencies.txt'
+data_folder = current_directory + '/' + 'data' # folder where the currency pair csv snapshots get saved
+results_file_path = current_directory + '/' + 'results.json' # where the analysis results get saved
 
 # reading the coin ids and ticker symbols out of their txt files (one per line)
 coin_ids = open(coin_ids_file).read().split()
@@ -40,6 +51,45 @@ url = 'https://api.coingecko.com/api/v3/simple/price?ids=' + ','.join(coin_ids) 
 # calling the api every run so the prices are always the most recent!
 
 exchange_rates = requests.get(url).json() # parsing json into a python dictionary
+
+
+######################################################
+# saving the currency pair data to a csv
+# the final project requirements want this saved as currency_pair_YYYY.MM.DD:HH.MM.txt
+# with columns currency_from, currency_to, exchange_rate, so this happens before anything
+# else touches exchange_rates, this way I have a raw snapshot saved no matter what
+
+def saveCurrencyPairData(exchange_rates):
+
+    # making the data folder if it doesn't exist yet (first run on a fresh ec2 box)
+    if not os.path.exists(data_folder):
+        os.makedirs(data_folder)
+
+    # building the filename with the current date and time, matching the format the assignment specifies
+    file_timestamp = datetime.now().strftime('%Y.%m.%d:%H.%M')
+    file_name = 'currency_pair_' + file_timestamp + '.txt'
+    file_path = data_folder + '/' + file_name
+
+    with open(file_path, 'w', newline='') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(['currency_from', 'currency_to', 'exchange_rate']) # header row
+
+        # same nested json unpacking as the graph building step below - the outer key is
+        # the coin id, the inner dictionary is every coin it quotes against and the exchange rate
+        for coin_id, price_quotes in exchange_rates.items():
+            from_ticker = coin_id_to_ticker[coin_id]
+
+            for to_ticker, exchange_rate in price_quotes.items():
+
+                # skipping a coin quoted against itself because their wieght will always be 1.0
+                if from_ticker != to_ticker:
+                    csv_writer.writerow([from_ticker, to_ticker, exchange_rate])
+
+    return file_path
+
+
+saved_file_path = saveCurrencyPairData(exchange_rates)
+print('currency pair data saved to:', saved_file_path)
 
 
 ######################################################
@@ -83,6 +133,11 @@ def calculatePathWeight(graph, path):
 # traverse the graph
 # for all currency pairs, find all paths, calculate the path weight and then reverse path weight, multiplying them together, and tracking the smallest and greatest path weights factor
 
+# AI PROMPT: 'why would nx.all_simple_paths take forever to run and how do i speed it up'
+# now that the graph has 13 coins instead of 7, letting all_simple_paths run with no length limit would take way too long (the number of possible paths explodes as more nodes get added) capping how many hops a path can take keeps this actually runnable, and longer chains aren't very realistic arbitrage opportunities anyway once you account for slippage and fees
+
+path_length_cutoff = 4
+
 smallest_factor = None
 greatest_factor = None
 smallest_factor_paths = None
@@ -98,7 +153,7 @@ for n1, n2 in permutations(graph.nodes, 2): # permutations returns all possible 
 
     # AI PROMPT: 'what built in networkx functions allow me to pull all paths out if I wanted to iterate through them in a for loop?'
     # all simple paths function below returns each path as a list
-    for path in nx.all_simple_paths(graph, source=n1, target=n2):
+    for path in nx.all_simple_paths(graph, source=n1, target=n2, cutoff=path_length_cutoff):
 
         # the reverse path is just the forward path flipped around
         reverse_path = list(reversed(path))
@@ -135,3 +190,29 @@ print('Smallest Paths weight factor: ', smallest_factor)
 print('Paths: ', smallest_factor_paths[0], smallest_factor_paths[1])
 print('Greatest Paths weight factor: ', greatest_factor)
 print('Paths: ', greatest_factor_paths[0], greatest_factor_paths[1])
+
+
+######################################################
+# saving the smallest and greatest path weights to results.json
+# final project requirements want the analysis results stored instead of just printed
+
+def saveResultsToJson(smallest_factor, smallest_factor_paths, greatest_factor, greatest_factor_paths):
+
+    results = {
+        'smallest_factor': smallest_factor,
+        'smallest_factor_forward_path': smallest_factor_paths[0],
+        'smallest_factor_reverse_path': smallest_factor_paths[1],
+        'greatest_factor': greatest_factor,
+        'greatest_factor_forward_path': greatest_factor_paths[0],
+        'greatest_factor_reverse_path': greatest_factor_paths[1]
+    }
+
+    with open(results_file_path, 'w') as results_file:
+        json.dump(results, results_file, indent=4) # indent so the file is actually readable when I open it
+
+    return results_file_path
+
+
+saved_results_path = saveResultsToJson(smallest_factor, smallest_factor_paths, greatest_factor, greatest_factor_paths)
+print('\nresults saved to:', saved_results_path)
+
