@@ -1,8 +1,8 @@
 '''
-this python program pulls live exchange rates for the top 7 crypto currencies from the
+This python program pulls live exchange rates for the 7 crypto currencies from the
 coingecko api, builds a directed graph where each currency is a node and each exchange
 rate is a weighted edge, then traverses every path between every currency pair looking
-for dis-equilibrium (arbitrage opportunities)
+for dis-equilibrium (arbitrage opportunities).
 
 If I trade from one coin to another and back, multiplying all the exchange
 rates along the way, the result should be exactly 1.0. If it's not exactly 1.0, the market

@@ -1,11 +1,11 @@
 '''
-this python program pulls live exchange rates for the top 7 crypto currencies from the
+This python program pulls live exchange rates for 13 crypto currencies from the
 coingecko api, builds a directed graph where each currency is a node and each exchange
 rate is a weighted edge, then traverses every path between every currency pair looking
-for dis-equilibrium (arbitrage opportunities)
+for dis-equilibrium (arbitrage opportunities).
 
-the big idea - if I trade from one coin to another and back, multiplying all the exchange
-rates along the way, the result should be exactly 1.0. if it's not exactly 1.0, the market
+If I trade from one coin to another and back, multiplying all the exchange
+rates along the way, the result should be exactly 1.0. If it's not exactly 1.0, the market
 is in dis-equilibrium and there is an arbitrage opportunity. the further from 1.0, the better.
 '''
 
@@ -16,10 +16,8 @@ import requests
 import networkx as nx
 from itertools import permutations
 
-# AI PROMPT: 'what's the easiest way in python to write rows of data out to a csv file'
 import csv
 
-# AI PROMPT: 'how do i get the current date and time formatted as a string in python'
 from datetime import datetime
 
 # AI PROMPT: 'what's the built in python library for reading and writing json files'
@@ -55,17 +53,15 @@ exchange_rates = requests.get(url).json() # parsing json into a python dictionar
 
 ######################################################
 # saving the currency pair data to a csv
-# the final project requirements want this saved as currency_pair_YYYY.MM.DD:HH.MM.txt
-# with columns currency_from, currency_to, exchange_rate, so this happens before anything
-# else touches exchange_rates, this way I have a raw snapshot saved no matter what
+# the final project requirements want this saved as currency_pair_YYYY.MM.DD:HH.MM.txt with columns currency_from, currency_to, exchange_rate, so this happens before anything else touches exchange_rates, this way I have a raw snapshot saved no matter what
 
 def saveCurrencyPairData(exchange_rates):
 
-    # making the data folder if it doesn't exist yet (first run on a fresh ec2 box)
+    # making the data folder if it doesn't exist yet 
     if not os.path.exists(data_folder):
         os.makedirs(data_folder)
 
-    # building the filename with the current date and time, matching the format the assignment specifies
+    # building the filename with the current date and time
     file_timestamp = datetime.now().strftime('%Y.%m.%d:%H.%M')
     file_name = 'currency_pair_' + file_timestamp + '.txt'
     file_path = data_folder + '/' + file_name
@@ -74,8 +70,7 @@ def saveCurrencyPairData(exchange_rates):
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(['currency_from', 'currency_to', 'exchange_rate']) # header row
 
-        # same nested json unpacking as the graph building step below - the outer key is
-        # the coin id, the inner dictionary is every coin it quotes against and the exchange rate
+        # same nested json unpacking as the graph building step
         for coin_id, price_quotes in exchange_rates.items():
             from_ticker = coin_id_to_ticker[coin_id]
 
