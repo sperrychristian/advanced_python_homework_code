@@ -1,32 +1,32 @@
 {
-    "smallest_factor": 0.9975173227685448,
+    "smallest_factor": 0.9988133070252749,
     "smallest_factor_forward_path": [
-        "bch",
         "eos",
         "eth",
+        "xrp",
         "btc",
         "dot"
     ],
     "smallest_factor_reverse_path": [
         "dot",
         "btc",
+        "xrp",
         "eth",
-        "eos",
-        "bch"
+        "eos"
     ],
-    "greatest_factor": 1.000912591792598,
+    "greatest_factor": 1.0013019497803912,
     "greatest_factor_forward_path": [
-        "btc",
-        "eos",
-        "dot",
         "eth",
-        "link"
+        "dot",
+        "ltc",
+        "btc",
+        "eos"
     ],
     "greatest_factor_reverse_path": [
-        "link",
-        "eth",
-        "dot",
         "eos",
-        "btc"
+        "btc",
+        "ltc",
+        "dot",
+        "eth"
     ]
 }

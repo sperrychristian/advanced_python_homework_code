@@ -99,6 +99,7 @@ print('currency pair data saved to:', saved_file_path)
 graph = nx.DiGraph() # creating a directed graph object
 
 edges = []
+
 # AI PROMPT: 'I need a reminder about how to unpack multiple items using a for loop in dictionary format'
 
 # the json is nested, the outer key is the coin id, the inner dictionary is every coin it quotes against and the exchange rate
