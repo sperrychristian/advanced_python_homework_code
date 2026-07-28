@@ -5,8 +5,7 @@ rate is a weighted edge, then traverses every path between every currency pair l
 for dis-equilibrium (arbitrage opportunities).
 
 If I trade from one coin to another and back, multiplying all the exchange
-rates along the way, the result should be exactly 1.0. If it's not exactly 1.0, the market
-is in dis-equilibrium and there is an arbitrage opportunity. the further from 1.0, the better.
+rates along the way, the result should be exactly 1.0. If it's not exactly 1.0, the market is in dis-equilibrium and there is an arbitrage opportunity. the further from 1.0, the better.
 '''
 
 import os
@@ -23,6 +22,11 @@ from datetime import datetime
 # AI PROMPT: 'what's the built in python library for reading and writing json files'
 import json
 
+# AI PROMPT: 'what's the alpaca python sdk and how do i submit a paper trading market order with it, give me details and examples. This is specifically for an assignment where I am using the alpaca api to make paper trades'
+from alpaca.trading.client import TradingClient
+from alpaca.trading.requests import MarketOrderRequest
+from alpaca.trading.enums import OrderSide, TimeInForce
+
 # AI PROMPT: 'Remind me how to get the current directory of a file in python'
 current_directory = os.path.dirname(__file__) # get the current directory of this file
 coin_ids_file = current_directory + '/' + 'coin_ids.txt' # assigning a variable to the filename
@@ -34,7 +38,7 @@ results_file_path = current_directory + '/' + 'results.json' # where the analysi
 coin_ids = open(coin_ids_file).read().split()
 ticker_symbols = open(vs_currencies_file).read().split()
 
-# the two files line up line by line - line 1 of coin_ids.txt is 'ethereum' and line 1 of vs_currencies.txt is 'eth'. I'm looping through them together builds the mapping from id to ticker so the graph only has one node per coin!
+# the two files line up line by line: line 1 of coin_ids.txt is 'ethereum' and line 1 of vs_currencies.txt is 'eth'. I'm looping through them together builds the mapping from id to ticker so the graph only has one node per coin!
 coin_id_to_ticker = {}
 
 for i in range(len(coin_ids)):
@@ -62,6 +66,7 @@ def saveCurrencyPairData(exchange_rates):
         os.makedirs(data_folder)
 
     # building the filename with the current date and time
+    #USED AU TO FIGURE OUT BEST WAY TO CAPTURE DATETIME IN THIS CIRCUMSTANCE
     file_timestamp = datetime.now().strftime('%Y.%m.%d:%H.%M')
     file_name = 'currency_pair_' + file_timestamp + '.txt'
     file_path = data_folder + '/' + file_name
@@ -95,6 +100,7 @@ graph = nx.DiGraph() # creating a directed graph object
 
 edges = []
 # AI PROMPT: 'I need a reminder about how to unpack multiple items using a for loop in dictionary format'
+
 # the json is nested, the outer key is the coin id, the inner dictionary is every coin it quotes against and the exchange rate
 for coin_id, price_quotes in exchange_rates.items():
     from_ticker = coin_id_to_ticker[coin_id]
@@ -129,7 +135,8 @@ def calculatePathWeight(graph, path):
 # for all currency pairs, find all paths, calculate the path weight and then reverse path weight, multiplying them together, and tracking the smallest and greatest path weights factor
 
 # AI PROMPT: 'why would nx.all_simple_paths take forever to run and how do i speed it up'
-# now that the graph has 13 coins instead of 7, letting all_simple_paths run with no length limit would take way too long (the number of possible paths explodes as more nodes get added) capping how many hops a path can take keeps this actually runnable, and longer chains aren't very realistic arbitrage opportunities anyway once you account for slippage and fees
+
+# now that the graph has 13 coins instead of 7, letting all_simple_paths run with no length limit takes forever, capping how many hops a path can take keep it runnable.
 
 path_length_cutoff = 4
 
@@ -147,6 +154,7 @@ for n1, n2 in permutations(graph.nodes, 2): # permutations returns all possible 
     print('\npaths from ' + n1 + ' to ' + n2 + ' ----------------------------------')
 
     # AI PROMPT: 'what built in networkx functions allow me to pull all paths out if I wanted to iterate through them in a for loop?'
+
     # all simple paths function below returns each path as a list
     for path in nx.all_simple_paths(graph, source=n1, target=n2, cutoff=path_length_cutoff):
 
@@ -154,6 +162,7 @@ for n1, n2 in permutations(graph.nodes, 2): # permutations returns all possible 
         reverse_path = list(reversed(path))
 
         # we  can trade into cardano but not from it, so the reverse path might use an edge that doesn't exist, using try/except to catch the missing edge and moves on to the next path
+
         try:
             forward_path_weight = calculatePathWeight(graph, path)
             reverse_path_weight = calculatePathWeight(graph, reverse_path)
@@ -211,3 +220,90 @@ def saveResultsToJson(smallest_factor, smallest_factor_paths, greatest_factor, g
 saved_results_path = saveResultsToJson(smallest_factor, smallest_factor_paths, greatest_factor, greatest_factor_paths)
 print('\nresults saved to:', saved_results_path)
 
+
+######################################################
+# paper trading the winning cycle on alpaca
+
+# when the greatest path weights factor is far enough above 1.0 to be worth trading, this submits paper orders around that whole cycle (the forward path, then the reverse path, which together bring you back to the currency you started with)
+
+# not every coin in my graph is tradable on alpaca so this set is what alpaca actually supports, anything outside this set gets skipped when submitting trades
+ALPACA_TRADABLE_TICKERS = {'btc', 'eth', 'ltc', 'xrp', 'ada', 'bch', 'doge', 'dot', 'link', 'avax', 'uni', 'aave'}
+
+# alpaca only lets me trade coins against usd, not coin to coin directly, so every leg of the cycle gets routed through usd instead of trying to trade the two coins against each other
+
+trade_amount_usd = 10 # how many dollars worth of each coin to trade per leg
+
+
+def getTradingClient():
+
+    # reading the api key and secret out of environment variables instead of hardcoding them in the script
+    api_key = os.environ.get('ALPACA_API_KEY')
+    secret_key = os.environ.get('ALPACA_SECRET_KEY')
+
+    if api_key is None or secret_key is None:
+        print('alpaca api key and secret are not set as environment variables, skipping paper trading')
+        return None
+
+    # paper=True for paper trading, NOT LIVE TRADING
+    return TradingClient(api_key, secret_key, paper=True)
+
+
+def submitArbitrageTrades(trading_client, path, reverse_path):
+
+    # stitching the forward path and reverse path together into one full loop of coins,skipping the first coin of reverse_path since it's the same coin path already ends on
+    full_cycle = path + reverse_path[1:]
+
+    # AI PROMPT: 'Give me the rundown on the alpaca trading libraries you showed me earlier, I need to know what arguments to use in each and understand the functions'
+
+    # walking the cycle coin by coin and only trading when the coin I should be holding. If a coin in the cycle isn't tradable on alpaca, the target for that spot is usd instead! So I sell out of whatever I was holding and wait in cash until the cycle reaches a coin alpaca supports again
+
+    # AI PROMPT: 'I need to keep track of what coin I'm currently holding as I loop through a list, and sometimes I'm not holding anything (just cash), whats a clean way to represent that in python instead of using a string like usd'
+
+    current_holding = None  # None means I'm holding usd right now, since that's what a fresh paper account starts with
+
+    # USED AI TO NAVIGATE ALPACA LIBRARY FUNCTIONS
+    for coin in full_cycle:
+        target_holding = coin if coin in ALPACA_TRADABLE_TICKERS else None
+
+        if target_holding == current_holding:
+            continue
+
+        if current_holding is not None:
+            try:
+                sell_order = MarketOrderRequest(
+                    symbol=current_holding.upper() + '/USD',
+                    notional=trade_amount_usd,
+                    side=OrderSide.SELL,
+                    time_in_force=TimeInForce.GTC
+                )
+                trading_client.submit_order(sell_order)
+                print('submitted paper sell order:', current_holding.upper() + '/USD')
+            except Exception as order_error:
+                print('sell order failed for ' + current_holding + ':', order_error)
+
+        if target_holding is not None:
+            try:
+                buy_order = MarketOrderRequest(
+                    symbol=target_holding.upper() + '/USD',
+                    notional=trade_amount_usd,
+                    side=OrderSide.BUY,
+                    time_in_force=TimeInForce.GTC
+                )
+                trading_client.submit_order(buy_order)
+                print('submitted paper buy order:', target_holding.upper() + '/USD')
+            except Exception as order_error:
+                print('buy order failed for ' + target_holding + ':', order_error)
+
+        current_holding = target_holding
+
+# AI PROMPT: 'im about to compare a variable to a number but it might be None, how do i check for that safely so my program doesnt crash'
+if greatest_factor is not None and greatest_factor > 1.0:
+
+    trading_client = getTradingClient()
+
+    if trading_client is not None:
+        submitArbitrageTrades(trading_client, greatest_factor_paths[0], greatest_factor_paths[1])
+else:
+    print('\ngreatest factor was not above 1.0, no cycle to trade this run')
+
+# USED AI TO GUIDE ME THROUGH DEPLOYING TO CRONTAB IN THE TERMINAL RATHER THAN READING THROUGH THE UBUNTU THREAD

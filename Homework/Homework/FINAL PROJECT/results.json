@@ -1,0 +1,32 @@
+{
+    "smallest_factor": 0.9975173227685448,
+    "smallest_factor_forward_path": [
+        "bch",
+        "eos",
+        "eth",
+        "btc",
+        "dot"
+    ],
+    "smallest_factor_reverse_path": [
+        "dot",
+        "btc",
+        "eth",
+        "eos",
+        "bch"
+    ],
+    "greatest_factor": 1.000912591792598,
+    "greatest_factor_forward_path": [
+        "btc",
+        "eos",
+        "dot",
+        "eth",
+        "link"
+    ],
+    "greatest_factor_reverse_path": [
+        "link",
+        "eth",
+        "dot",
+        "eos",
+        "btc"
+    ]
+}
